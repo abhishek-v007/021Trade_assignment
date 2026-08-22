@@ -25,6 +25,36 @@ class AppTheme {
   static const Color borderColor = Color(0xFF1E2D45);
   static const Color dividerColor = Color(0xFF1A2540);
 
+  /// Inter for UI; Noto Sans fallback covers ₹ (Inter does not include it).
+  static TextTheme get _textTheme {
+    final base = GoogleFonts.interTextTheme(
+      const TextTheme(
+        displayLarge: TextStyle(color: textPrimary),
+        displayMedium: TextStyle(color: textPrimary),
+        displaySmall: TextStyle(color: textPrimary),
+        headlineLarge:
+            TextStyle(color: textPrimary, fontWeight: FontWeight.w700),
+        headlineMedium:
+            TextStyle(color: textPrimary, fontWeight: FontWeight.w600),
+        headlineSmall:
+            TextStyle(color: textPrimary, fontWeight: FontWeight.w600),
+        titleLarge: TextStyle(color: textPrimary, fontWeight: FontWeight.w600),
+        titleMedium: TextStyle(color: textPrimary, fontWeight: FontWeight.w500),
+        titleSmall: TextStyle(color: textSecondary, fontWeight: FontWeight.w500),
+        bodyLarge: TextStyle(color: textPrimary),
+        bodyMedium: TextStyle(color: textSecondary),
+        bodySmall: TextStyle(color: textMuted),
+        labelLarge: TextStyle(color: textPrimary, fontWeight: FontWeight.w600),
+        labelMedium: TextStyle(color: textSecondary),
+        labelSmall: TextStyle(color: textMuted),
+      ),
+    );
+
+    final noto = GoogleFonts.notoSans().fontFamily;
+    if (noto == null) return base;
+    return base.apply(fontFamilyFallback: [noto]);
+  }
+
   static ThemeData get darkTheme {
     return ThemeData(
       brightness: Brightness.dark,
@@ -35,32 +65,14 @@ class AppTheme {
         surface: surfaceDark,
         error: lossRed,
       ),
-      textTheme: GoogleFonts.interTextTheme(
-        const TextTheme(
-          displayLarge: TextStyle(color: textPrimary),
-          displayMedium: TextStyle(color: textPrimary),
-          displaySmall: TextStyle(color: textPrimary),
-          headlineLarge: TextStyle(color: textPrimary, fontWeight: FontWeight.w700),
-          headlineMedium: TextStyle(color: textPrimary, fontWeight: FontWeight.w600),
-          headlineSmall: TextStyle(color: textPrimary, fontWeight: FontWeight.w600),
-          titleLarge: TextStyle(color: textPrimary, fontWeight: FontWeight.w600),
-          titleMedium: TextStyle(color: textPrimary, fontWeight: FontWeight.w500),
-          titleSmall: TextStyle(color: textSecondary, fontWeight: FontWeight.w500),
-          bodyLarge: TextStyle(color: textPrimary),
-          bodyMedium: TextStyle(color: textSecondary),
-          bodySmall: TextStyle(color: textMuted),
-          labelLarge: TextStyle(color: textPrimary, fontWeight: FontWeight.w600),
-          labelMedium: TextStyle(color: textSecondary),
-          labelSmall: TextStyle(color: textMuted),
-        ),
-      ),
-      appBarTheme: const AppBarTheme(
+      textTheme: _textTheme,
+      appBarTheme: AppBarTheme(
         backgroundColor: primaryDark,
         elevation: 0,
         scrolledUnderElevation: 0,
         centerTitle: false,
-        iconTheme: IconThemeData(color: textPrimary),
-        titleTextStyle: TextStyle(
+        iconTheme: const IconThemeData(color: textPrimary),
+        titleTextStyle: GoogleFonts.inter(
           color: textPrimary,
           fontSize: 20,
           fontWeight: FontWeight.w700,
@@ -72,6 +84,7 @@ class AppTheme {
         thickness: 1,
       ),
       iconTheme: const IconThemeData(color: textSecondary),
+      primaryIconTheme: const IconThemeData(color: textPrimary),
       cardTheme: CardThemeData(
         color: cardDark,
         elevation: 0,
