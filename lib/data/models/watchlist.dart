@@ -1,43 +1,65 @@
 import 'package:equatable/equatable.dart';
-import 'stock.dart';
 
+/// A named watchlist. Stores **symbols only** so live prices always bind by
+/// symbol (reorder never shows stale ticks for the wrong row).
 class Watchlist extends Equatable {
   final String id;
   final String name;
-  final List<Stock> stocks;
+  final List<String> symbols;
 
   const Watchlist({
     required this.id,
     required this.name,
-    required this.stocks,
+    required this.symbols,
   });
 
   Watchlist copyWith({
     String? id,
     String? name,
-    List<Stock>? stocks,
+    List<String>? symbols,
   }) {
     return Watchlist(
       id: id ?? this.id,
       name: name ?? this.name,
-      stocks: stocks ?? this.stocks,
+      symbols: symbols ?? this.symbols,
     );
   }
 
-  Watchlist reorderStock(int oldIndex, int newIndex) {
-    final updatedStocks = List<Stock>.from(stocks);
-    final stock = updatedStocks.removeAt(oldIndex);
-    final insertIndex = newIndex > oldIndex ? newIndex - 1 : newIndex;
-    updatedStocks.insert(insertIndex, stock);
-    return copyWith(stocks: updatedStocks);
+  bool contains(String symbol) => symbols.contains(symbol);
+
+  Watchlist addSymbol(String symbol) {
+    if (symbols.contains(symbol)) return this;
+    return copyWith(symbols: [...symbols, symbol]);
   }
 
-  Watchlist removeStock(String stockId) {
+  Watchlist removeSymbol(String symbol) {
     return copyWith(
-      stocks: stocks.where((s) => s.id != stockId).toList(),
+      symbols: symbols.where((s) => s != symbol).toList(growable: false),
+    );
+  }
+
+  Watchlist reorderSymbol(int oldIndex, int newIndex) {
+    final updated = List<String>.from(symbols);
+    final item = updated.removeAt(oldIndex);
+    final insertIndex = newIndex > oldIndex ? newIndex - 1 : newIndex;
+    updated.insert(insertIndex, item);
+    return copyWith(symbols: updated);
+  }
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'name': name,
+        'symbols': symbols,
+      };
+
+  factory Watchlist.fromJson(Map<String, dynamic> json) {
+    return Watchlist(
+      id: json['id'] as String,
+      name: json['name'] as String,
+      symbols: (json['symbols'] as List<dynamic>).cast<String>(),
     );
   }
 
   @override
-  List<Object?> get props => [id, name, stocks];
+  List<Object?> get props => [id, name, symbols];
 }

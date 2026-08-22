@@ -1,7 +1,9 @@
 import 'package:bloc_test/bloc_test.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:uuid/uuid.dart';
 import 'package:watchlist_app/bloc/watchlist/watchlist_bloc.dart';
-import 'package:watchlist_app/data/models/stock.dart';
+import 'package:watchlist_app/core/money.dart';
+import 'package:watchlist_app/data/models/watchlist.dart';
 
 import 'mock_watchlist_repository.dart';
 
@@ -20,17 +22,21 @@ void main() {
     });
 
     blocTest<WatchlistBloc, WatchlistState>(
-      'emits [Loading, Loaded] on WatchlistLoadRequested success',
+      'emits [Loading, Loaded] on WatchlistLoadRequested',
       build: () => WatchlistBloc(repository: repository),
       act: (bloc) => bloc.add(const WatchlistLoadRequested()),
       expect: () => [
         isA<WatchlistLoading>(),
         isA<WatchlistLoaded>(),
       ],
+      verify: (bloc) {
+        final state = bloc.state as WatchlistLoaded;
+        expect(state.selected.symbols, ['RELIANCE', 'TCS', 'INFY']);
+      },
     );
 
     blocTest<WatchlistBloc, WatchlistState>(
-      'emits [Loading, Error] on WatchlistLoadRequested failure',
+      'emits Error when load fails',
       build: () => WatchlistBloc(
         repository: MockWatchlistRepository(shouldThrow: true),
       ),
@@ -42,130 +48,174 @@ void main() {
     );
 
     blocTest<WatchlistBloc, WatchlistState>(
-      'WatchlistLoaded contains correct stock count after load',
-      build: () => WatchlistBloc(repository: repository),
-      act: (bloc) => bloc.add(const WatchlistLoadRequested()),
+      'creates a new empty watchlist and selects it',
+      build: () => WatchlistBloc(
+        repository: repository,
+        uuid: const Uuid(),
+      ),
+      seed: () => const WatchlistLoaded(
+        watchlists: [
+          Watchlist(id: 'wl_1', name: 'My Watchlist', symbols: ['TCS']),
+        ],
+        selectedId: 'wl_1',
+      ),
+      act: (bloc) => bloc.add(const WatchlistCreated('Banks')),
       verify: (bloc) {
         final state = bloc.state as WatchlistLoaded;
-        expect(state.watchlist.stocks.length, equals(mockStocks.length));
+        expect(state.watchlists.length, 2);
+        expect(state.selected.name, 'Banks');
+        expect(state.selected.symbols, isEmpty);
       },
     );
 
     blocTest<WatchlistBloc, WatchlistState>(
-      'emits reordered watchlist on WatchlistStockReordered',
+      'renames the selected watchlist',
       build: () => WatchlistBloc(repository: repository),
-      seed: () => WatchlistLoaded(watchlist: mockWatchlist),
+      seed: () => const WatchlistLoaded(
+        watchlists: [
+          Watchlist(id: 'wl_1', name: 'Old', symbols: []),
+        ],
+        selectedId: 'wl_1',
+      ),
+      act: (bloc) => bloc.add(
+        const WatchlistRenamed(watchlistId: 'wl_1', name: 'New Name'),
+      ),
+      verify: (bloc) {
+        final state = bloc.state as WatchlistLoaded;
+        expect(state.selected.name, 'New Name');
+      },
+    );
+
+    blocTest<WatchlistBloc, WatchlistState>(
+      'deletes a watchlist when more than one exists',
+      build: () => WatchlistBloc(repository: repository),
+      seed: () => const WatchlistLoaded(
+        watchlists: [
+          Watchlist(id: 'wl_1', name: 'A', symbols: []),
+          Watchlist(id: 'wl_2', name: 'B', symbols: []),
+        ],
+        selectedId: 'wl_1',
+      ),
+      act: (bloc) => bloc.add(const WatchlistDeleted('wl_1')),
+      verify: (bloc) {
+        final state = bloc.state as WatchlistLoaded;
+        expect(state.watchlists.length, 1);
+        expect(state.selectedId, 'wl_2');
+      },
+    );
+
+    blocTest<WatchlistBloc, WatchlistState>(
+      'does not delete the last watchlist',
+      build: () => WatchlistBloc(repository: repository),
+      seed: () => const WatchlistLoaded(
+        watchlists: [
+          Watchlist(id: 'wl_1', name: 'Only', symbols: []),
+        ],
+        selectedId: 'wl_1',
+      ),
+      act: (bloc) => bloc.add(const WatchlistDeleted('wl_1')),
+      expect: () => <WatchlistState>[],
+    );
+
+    blocTest<WatchlistBloc, WatchlistState>(
+      'adds a stock to the selected watchlist',
+      build: () => WatchlistBloc(repository: repository),
+      seed: () => const WatchlistLoaded(
+        watchlists: [
+          Watchlist(id: 'wl_1', name: 'A', symbols: ['TCS']),
+        ],
+        selectedId: 'wl_1',
+      ),
+      act: (bloc) => bloc.add(const WatchlistStockAdded('SBIN')),
+      verify: (bloc) {
+        final state = bloc.state as WatchlistLoaded;
+        expect(state.selected.symbols, ['TCS', 'SBIN']);
+      },
+    );
+
+    blocTest<WatchlistBloc, WatchlistState>(
+      'ignores duplicate stock add',
+      build: () => WatchlistBloc(repository: repository),
+      seed: () => const WatchlistLoaded(
+        watchlists: [
+          Watchlist(id: 'wl_1', name: 'A', symbols: ['TCS']),
+        ],
+        selectedId: 'wl_1',
+      ),
+      act: (bloc) => bloc.add(const WatchlistStockAdded('TCS')),
+      expect: () => <WatchlistState>[],
+    );
+
+    blocTest<WatchlistBloc, WatchlistState>(
+      'removes a stock',
+      build: () => WatchlistBloc(repository: repository),
+      seed: () => const WatchlistLoaded(
+        watchlists: [
+          Watchlist(id: 'wl_1', name: 'A', symbols: ['TCS', 'INFY']),
+        ],
+        selectedId: 'wl_1',
+      ),
+      act: (bloc) => bloc.add(const WatchlistStockRemoved('TCS')),
+      verify: (bloc) {
+        final state = bloc.state as WatchlistLoaded;
+        expect(state.selected.symbols, ['INFY']);
+      },
+    );
+
+    blocTest<WatchlistBloc, WatchlistState>(
+      'reorders stocks by symbol (binding stays on symbol)',
+      build: () => WatchlistBloc(repository: repository),
+      seed: () => const WatchlistLoaded(
+        watchlists: [
+          Watchlist(
+            id: 'wl_1',
+            name: 'A',
+            symbols: ['RELIANCE', 'TCS', 'INFY'],
+          ),
+        ],
+        selectedId: 'wl_1',
+      ),
       act: (bloc) => bloc.add(
         const WatchlistStockReordered(oldIndex: 0, newIndex: 2),
       ),
       verify: (bloc) {
         final state = bloc.state as WatchlistLoaded;
-        expect(state.watchlist.stocks.first.symbol, equals('TCS'));
-        expect(state.watchlist.stocks[1].symbol, equals('RELIANCE'));
+        expect(state.selected.symbols, ['TCS', 'RELIANCE', 'INFY']);
       },
-    );
-
-    blocTest<WatchlistBloc, WatchlistState>(
-      'does nothing on reorder when state is not WatchlistLoaded',
-      build: () => WatchlistBloc(repository: repository),
-      act: (bloc) => bloc.add(
-        const WatchlistStockReordered(oldIndex: 0, newIndex: 1),
-      ),
-      expect: () => <WatchlistState>[],
-    );
-
-    blocTest<WatchlistBloc, WatchlistState>(
-      'emits watchlist with one fewer stock on WatchlistStockRemoved',
-      build: () => WatchlistBloc(repository: repository),
-      seed: () => WatchlistLoaded(watchlist: mockWatchlist),
-      act: (bloc) => bloc.add(
-        const WatchlistStockRemoved(stockId: '1'),
-      ),
-      verify: (bloc) {
-        final state = bloc.state as WatchlistLoaded;
-        expect(state.watchlist.stocks.length, equals(mockStocks.length - 1));
-        expect(
-          state.watchlist.stocks.any((s) => s.id == '1'),
-          isFalse,
-        );
-      },
-    );
-
-    blocTest<WatchlistBloc, WatchlistState>(
-      'emits [Loading, Loaded] on WatchlistRefreshRequested from initial',
-      build: () => WatchlistBloc(repository: repository),
-      act: (bloc) => bloc.add(const WatchlistRefreshRequested()),
-      expect: () => [
-        isA<WatchlistLoading>(),
-        isA<WatchlistLoaded>(),
-      ],
-    );
-
-    blocTest<WatchlistBloc, WatchlistState>(
-      'preserves loaded state during refresh then emits fresh data',
-      build: () => WatchlistBloc(repository: repository),
-      seed: () => WatchlistLoaded(watchlist: mockWatchlist),
-      act: (bloc) => bloc.add(const WatchlistRefreshRequested()),
-      expect: () => [
-        isA<WatchlistLoaded>(),
-        isA<WatchlistLoaded>(),
-      ],
     );
   });
 
-  group('Watchlist model reorder logic', () {
-    test('reorderStock moves item correctly (forward)', () {
-      final reordered = mockWatchlist.reorderStock(0, 2);
-      expect(reordered.stocks[0].symbol, equals('TCS'));
-      expect(reordered.stocks[1].symbol, equals('RELIANCE'));
-      expect(reordered.stocks[2].symbol, equals('INFY'));
+  group('Watchlist model', () {
+    test('reorderSymbol moves forward correctly', () {
+      const wl = Watchlist(
+        id: '1',
+        name: 'A',
+        symbols: ['RELIANCE', 'TCS', 'INFY'],
+      );
+      expect(wl.reorderSymbol(0, 2).symbols, ['TCS', 'RELIANCE', 'INFY']);
     });
 
-    test('reorderStock moves item correctly (backward)', () {
-      final reordered = mockWatchlist.reorderStock(2, 0);
-      expect(reordered.stocks[0].symbol, equals('INFY'));
-      expect(reordered.stocks[1].symbol, equals('RELIANCE'));
-      expect(reordered.stocks[2].symbol, equals('TCS'));
-    });
-
-    test('removeStock removes correct item', () {
-      final updated = mockWatchlist.removeStock('2');
-      expect(updated.stocks.length, equals(2));
-      expect(updated.stocks.any((s) => s.symbol == 'TCS'), isFalse);
+    test('reorderSymbol moves backward correctly', () {
+      const wl = Watchlist(
+        id: '1',
+        name: 'A',
+        symbols: ['RELIANCE', 'TCS', 'INFY'],
+      );
+      expect(wl.reorderSymbol(2, 0).symbols, ['INFY', 'RELIANCE', 'TCS']);
     });
   });
 
-  group('Stock model', () {
-    const stock = Stock(
-      id: 'test',
-      symbol: 'TEST',
-      companyName: 'Test Corp',
-      currentPrice: 100.50,
-      changeAmount: 2.30,
-      changePercent: 2.34,
-      trend: StockTrend.up,
-      logoAsset: '',
-      openPrice: 98.20,
-      highPrice: 101.00,
-      lowPrice: 97.80,
-      volume: 1500000,
-    );
-
-    test('formattedPrice formats correctly', () {
-      expect(stock.formattedPrice, equals('₹100.50'));
+  group('Money', () {
+    test('formats without floating drift', () {
+      expect(const Money(10050).formatted, '₹100.50');
+      expect(const Money(-125).formatted, '-₹1.25');
+      expect(Money.fromRupees(2843.50).paise, 284350);
     });
 
-    test('formattedChangePercent is positive for up trend', () {
-      expect(stock.formattedChangePercent, startsWith('+'));
-    });
-
-    test('isPositive is true for up trend', () {
-      expect(stock.isPositive, isTrue);
-      expect(stock.isNegative, isFalse);
-    });
-
-    test('formattedVolume returns Lakh notation for 1.5M', () {
-      expect(stock.formattedVolume, equals('15.00L'));
+    test('percentOf is precise for typical moves', () {
+      const change = Money(162);
+      const basis = Money(10000);
+      expect(change.percentOf(basis), closeTo(1.62, 0.0001));
     });
   });
 }

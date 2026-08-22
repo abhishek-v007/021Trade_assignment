@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
+
 import '../../data/models/watchlist.dart';
-import '../../data/models/stock.dart';
 import '../theme/app_theme.dart';
 
 class WatchlistHeader extends StatelessWidget {
@@ -8,44 +8,33 @@ class WatchlistHeader extends StatelessWidget {
 
   const WatchlistHeader({super.key, required this.watchlist});
 
-  int get _gainers =>
-      watchlist.stocks.where((s) => s.trend == StockTrend.up).length;
-
-  int get _losers =>
-      watchlist.stocks.where((s) => s.trend == StockTrend.down).length;
-
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-      padding: const EdgeInsets.all(16),
+      margin: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF1E2D45), Color(0xFF162035)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(14),
+        color: AppTheme.cardDark,
+        borderRadius: BorderRadius.circular(12),
         border: Border.all(color: AppTheme.borderColor),
       ),
       child: Row(
         children: [
-          _StatChip(
-            label: 'Stocks',
-            value: '${watchlist.stocks.length}',
-            color: AppTheme.accent,
+          Text(
+            '${watchlist.symbols.length}',
+            style: const TextStyle(
+              color: AppTheme.accent,
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+            ),
           ),
-          const SizedBox(width: 12),
-          _StatChip(
-            label: 'Gainers',
-            value: '$_gainers',
-            color: AppTheme.gainGreen,
-          ),
-          const SizedBox(width: 12),
-          _StatChip(
-            label: 'Losers',
-            value: '$_losers',
-            color: AppTheme.lossRed,
+          const SizedBox(width: 6),
+          Text(
+            watchlist.symbols.length == 1 ? 'stock' : 'stocks',
+            style: const TextStyle(
+              color: AppTheme.textMuted,
+              fontSize: 13,
+            ),
           ),
           const Spacer(),
           const Icon(
@@ -55,7 +44,7 @@ class WatchlistHeader extends StatelessWidget {
           ),
           const SizedBox(width: 6),
           const Text(
-            'Drag to reorder',
+            'Drag to reorder · Tap to trade',
             style: TextStyle(
               color: AppTheme.textMuted,
               fontSize: 11,
@@ -64,43 +53,6 @@ class WatchlistHeader extends StatelessWidget {
           ),
         ],
       ),
-    );
-  }
-}
-
-class _StatChip extends StatelessWidget {
-  final String label;
-  final String value;
-  final Color color;
-
-  const _StatChip({
-    required this.label,
-    required this.value,
-    required this.color,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          value,
-          style: TextStyle(
-            color: color,
-            fontSize: 18,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-        Text(
-          label,
-          style: const TextStyle(
-            color: AppTheme.textMuted,
-            fontSize: 11,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-      ],
     );
   }
 }

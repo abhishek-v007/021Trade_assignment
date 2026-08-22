@@ -1,38 +1,37 @@
 import 'package:flutter/material.dart';
-import '../../data/models/stock.dart';
+
+import '../../data/models/stock_quote.dart';
 import '../theme/app_theme.dart';
 
 class PriceChangeBadge extends StatelessWidget {
-  final Stock stock;
-  final bool showAmount;
+  final StockQuote quote;
 
   const PriceChangeBadge({
     super.key,
-    required this.stock,
-    this.showAmount = false,
+    required this.quote,
   });
 
   Color get _backgroundColor {
-    return switch (stock.trend) {
-      StockTrend.up => AppTheme.gainGreenBg,
-      StockTrend.down => AppTheme.lossRedBg,
-      StockTrend.neutral => AppTheme.neutralBg,
+    return switch (quote.direction) {
+      PriceDirection.up => AppTheme.gainGreenBg,
+      PriceDirection.down => AppTheme.lossRedBg,
+      PriceDirection.flat => AppTheme.neutralBg,
     };
   }
 
   Color get _textColor {
-    return switch (stock.trend) {
-      StockTrend.up => AppTheme.gainGreen,
-      StockTrend.down => AppTheme.lossRed,
-      StockTrend.neutral => AppTheme.neutralColor,
+    return switch (quote.direction) {
+      PriceDirection.up => AppTheme.gainGreen,
+      PriceDirection.down => AppTheme.lossRed,
+      PriceDirection.flat => AppTheme.neutralColor,
     };
   }
 
   IconData get _icon {
-    return switch (stock.trend) {
-      StockTrend.up => Icons.arrow_drop_up_rounded,
-      StockTrend.down => Icons.arrow_drop_down_rounded,
-      StockTrend.neutral => Icons.remove,
+    return switch (quote.direction) {
+      PriceDirection.up => Icons.arrow_drop_up_rounded,
+      PriceDirection.down => Icons.arrow_drop_down_rounded,
+      PriceDirection.flat => Icons.remove,
     };
   }
 
@@ -50,9 +49,7 @@ class PriceChangeBadge extends StatelessWidget {
           Icon(_icon, color: _textColor, size: 16),
           const SizedBox(width: 2),
           Text(
-            showAmount
-                ? stock.formattedChangePercent
-                : stock.formattedChangePercent,
+            quote.formattedChangePercent,
             style: TextStyle(
               color: _textColor,
               fontSize: 12,

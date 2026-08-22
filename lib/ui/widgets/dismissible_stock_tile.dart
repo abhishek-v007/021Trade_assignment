@@ -1,1 +1,2 @@
-export 'stock_list_tile.dart' show DismissibleStockTile;
+/// Re-export for older imports.
+export 'stock_list_tile.dart';

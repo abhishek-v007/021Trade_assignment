@@ -16,26 +16,33 @@ class WatchlistLoading extends WatchlistState {
 }
 
 class WatchlistLoaded extends WatchlistState {
-  final Watchlist watchlist;
-  final bool isReordering;
+  final List<Watchlist> watchlists;
+  final String selectedId;
 
   const WatchlistLoaded({
-    required this.watchlist,
-    this.isReordering = false,
+    required this.watchlists,
+    required this.selectedId,
   });
 
+  Watchlist get selected {
+    return watchlists.firstWhere(
+      (w) => w.id == selectedId,
+      orElse: () => watchlists.first,
+    );
+  }
+
   WatchlistLoaded copyWith({
-    Watchlist? watchlist,
-    bool? isReordering,
+    List<Watchlist>? watchlists,
+    String? selectedId,
   }) {
     return WatchlistLoaded(
-      watchlist: watchlist ?? this.watchlist,
-      isReordering: isReordering ?? this.isReordering,
+      watchlists: watchlists ?? this.watchlists,
+      selectedId: selectedId ?? this.selectedId,
     );
   }
 
   @override
-  List<Object?> get props => [watchlist, isReordering];
+  List<Object?> get props => [watchlists, selectedId];
 }
 
 class WatchlistError extends WatchlistState {
